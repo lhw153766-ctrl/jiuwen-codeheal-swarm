@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jiuwen-codeheal-swarm"
+version = "0.1.0"
+description = "Jiuwen-CodeHeal Swarm: repository-level CI fault self-healing and regression verification multi-agent system built on openJiuwen + JiuwenSwarm."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "Apache-2.0" }
+authors = [{ name = "openJiuwen CodeHeal Swarm Team" }]
+keywords = ["openjiuwen", "jiuwenswarm", "multi-agent", "ci", "self-healing", "swarm", "code-review", "bug-fix"]
+dependencies = [
+    "openjiuwen>=0.1.19",
+    "workswarm>=0.2.7",
+    "pydantic>=2.5,<3",
+    "rich>=13.7",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+codeheal = "jiuwen_codeheal.cli:main"
+
+[project.urls]
+Homepage = "https://atomgit.com/openJiuwen/jiuwenswarm"
+Competition = "openJiuwen Agent Innovation Competition - Coding Track"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+jiuwen_codeheal = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra -q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
