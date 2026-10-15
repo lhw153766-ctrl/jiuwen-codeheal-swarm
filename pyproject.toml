@@ -43,6 +43,8 @@ jiuwen_codeheal = ["py.typed"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["src"]
+norecursedirs = ["examples", ".git", ".venv", "build", "dist", "*.egg-info"]
 addopts = "-ra -q"
 filterwarnings = [
     "ignore::DeprecationWarning",

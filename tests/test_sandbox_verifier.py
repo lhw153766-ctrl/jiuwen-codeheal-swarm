@@ -52,6 +52,9 @@ def test_sandbox_security_whitelist(dummy_repo: Path):
             sb.resolve("../../etc/passwd")
 
         with pytest.raises(SecurityError):
+            sb.resolve("/etc/passwd")
+
+        with pytest.raises(SecurityError):
             sb.resolve("C:/Windows/System32/cmd.exe")
 
 

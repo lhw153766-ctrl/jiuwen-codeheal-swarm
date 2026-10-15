@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "updated_at": 1792059870.49685,
+  "updated_at": 1792075668.851685,
   "count": 2,
   "patterns": [
     {
@@ -20,10 +20,10 @@
       "root_cause": "index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range",
       "strategy": "boundary_guard",
       "fix_template": "def average(values: List[float]) -> float:\n    \"\"\"返回数值列表的平均值。\n\n    BUG: 空列表未守卫，触发 ZeroDivisionError。\n    \"\"\"\n    if not values:\n        return 0.0\n    return sum(values) / len(values)",
-      "occurrences": 1,
-      "success_count": 1,
+      "occurrences": 2,
+      "success_count": 2,
       "example_file": "buggy_repo_demo/calc.py",
-      "updated_at": 1792059401.7683659
+      "updated_at": 1792075668.851685
     }
   ]
 }

@@ -199,20 +199,20 @@ def evolve(traj: HealingTrajectory, skills_dir: str | Path) -> Optional[LearnedP
         return None
 
     lib = SkillLibrary(skills_dir)
-    existing = lib.find(pattern.fingerprint)
-    if existing is not None:
-        existing.occurrences += 1
-        existing.success_count += pattern.success_count
-        existing.root_cause = pattern.root_cause
-        existing.strategy = pattern.strategy
-        existing.fix_template = pattern.fix_template or existing.fix_template
-        existing.example_file = pattern.example_file or existing.example_file
-        existing.updated_at = time.time()
-        lib.save_patterns(lib.load_patterns())
-        lib.append_markdown(traj, existing)
-        return existing
-
     patterns = lib.load_patterns()
+    for idx, p in enumerate(patterns):
+        if p.fingerprint == pattern.fingerprint:
+            p.occurrences += 1
+            p.success_count += pattern.success_count
+            p.root_cause = pattern.root_cause
+            p.strategy = pattern.strategy
+            p.fix_template = pattern.fix_template or p.fix_template
+            p.example_file = pattern.example_file or p.example_file
+            p.updated_at = time.time()
+            lib.save_patterns(patterns)
+            lib.append_markdown(traj, p)
+            return p
+
     patterns.append(pattern)
     lib.save_patterns(patterns)
     lib.append_markdown(traj, pattern)

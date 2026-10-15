@@ -85,13 +85,34 @@ class Sandbox:
         """
         if self.root is None:
             raise SecurityError("sandbox is not active")
+        root_resolved = self.root.resolve()
+
+        # Reject path syntax intended as absolute paths on any platform (e.g. C:\... or /...)
+        raw_str = str(rel_path).strip()
+        if bool(re.match(r"^[a-zA-Z]:", raw_str)) or raw_str.startswith(("/", "\\")):
+            candidate = Path(raw_str).resolve()
+            try:
+                if os.path.commonpath([str(candidate), str(root_resolved)]) != str(root_resolved):
+                    raise SecurityError(
+                        f"path '{rel_path}' is outside sandbox root '{root_resolved}'"
+                    )
+                return candidate
+            except (ValueError, SecurityError):
+                raise SecurityError(
+                    f"path '{rel_path}' is outside sandbox root '{root_resolved}'"
+                )
+
         # Normalise and reject traversal.
         candidate = (self.root / rel_path).resolve()
-        root_resolved = self.root.resolve()
-        if os.path.commonpath([str(candidate), str(root_resolved)]) != str(root_resolved):
+        try:
+            if os.path.commonpath([str(candidate), str(root_resolved)]) != str(root_resolved):
+                raise SecurityError(
+                    f"path '{rel_path}' escapes the sandbox whitelist "
+                    f"(resolved to '{candidate}', root '{root_resolved}')"
+                )
+        except ValueError:
             raise SecurityError(
-                f"path '{rel_path}' escapes the sandbox whitelist "
-                f"(resolved to '{candidate}', root '{root_resolved}')"
+                f"path '{rel_path}' escapes the sandbox whitelist"
             )
         return candidate
 
