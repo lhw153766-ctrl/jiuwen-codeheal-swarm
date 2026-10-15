@@ -30,7 +30,8 @@ dev = [
 codeheal = "jiuwen_codeheal.cli:main"
 
 [project.urls]
-Homepage = "https://atomgit.com/openJiuwen/jiuwenswarm"
+Homepage = "https://github.com/lhw153766-ctrl/jiuwen-codeheal-swarm"
+Repository = "https://github.com/lhw153766-ctrl/jiuwen-codeheal-swarm"
 Competition = "openJiuwen Agent Innovation Competition - Coding Track"
 
 [tool.setuptools.packages.find]

@@ -3,7 +3,7 @@
 > **基于 openJiuwen 与 JiuwenSwarm 多智能体协同进化的仓库级 CI 故障自愈与回归验证系统**  
 > *openJiuwen 智能体创新大赛 —— Coding 赛道核心参赛作品*
 
-[![CI](https://github.com/openJiuwen-ai/jiuwen-codeheal-swarm/actions/workflows/ci.yml/badge.svg)](https://github.com/openJiuwen-ai/jiuwen-codeheal-swarm/actions)
+[![CI](https://github.com/lhw153766-ctrl/jiuwen-codeheal-swarm/actions/workflows/ci.yml/badge.svg)](https://github.com/lhw153766-ctrl/jiuwen-codeheal-swarm/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![openJiuwen](https://img.shields.io/badge/openJiuwen-0.1.19-brightgreen.svg)](https://atomgit.com/openJiuwen/agent-core)
 [![JiuwenSwarm](https://img.shields.io/badge/JiuwenSwarm-0.2.7-orange.svg)](https://atomgit.com/openJiuwen/jiuwenswarm)
@@ -71,7 +71,7 @@ flowchart TD
 ### 1. 环境准备
 要求 Python >= 3.11, < 3.14：
 ```bash
-git clone https://github.com/openJiuwen-ai/jiuwen-codeheal-swarm.git
+git clone https://github.com/lhw153766-ctrl/jiuwen-codeheal-swarm.git
 cd jiuwen-codeheal-swarm
 
 # 安装核心依赖与开发套件

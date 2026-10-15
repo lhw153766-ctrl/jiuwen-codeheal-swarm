@@ -81,3 +81,23 @@ def average(values: List[float]) -> float:
 ```
 - **Occurrences**: 2 (success 2)
 - **Run**: run-20261015-181932 · 4.63s · mode=replay
+
+## [2026-10-15 18:24:26] index_error @ `buggy_repo_demo/calc.py` — ✅ HEALED
+
+- **Fingerprint**: `4747dcb7db75d17f`
+- **Root cause**: index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range
+- **Strategy**: `boundary_guard`
+- **Fix template**:
+
+```python
+def average(values: List[float]) -> float:
+    """返回数值列表的平均值。
+
+    BUG: 空列表未守卫，触发 ZeroDivisionError。
+    """
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+```
+- **Occurrences**: 2 (success 2)
+- **Run**: run-20261015-182426 · 4.13s · mode=replay
