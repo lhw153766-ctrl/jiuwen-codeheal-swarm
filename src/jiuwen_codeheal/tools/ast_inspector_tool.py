@@ -297,14 +297,18 @@ class FixPolicy:
 
         if ft == FaultType.ASSERTION_ERROR:
             return self._fix_off_by_one(signature, ctx, src, file_path, line)
-        if ft in (FaultType.VALUE_ERROR, FaultType.TYPE_ERROR):
+        if ft == FaultType.VALUE_ERROR:
             return self._fix_empty_input(signature, ctx, src, file_path, line)
+        if ft == FaultType.TYPE_ERROR:
+            return self._fix_type_coercion(signature, ctx, src, file_path, line)
         if ft == FaultType.KEY_ERROR:
             return self._fix_missing_key(signature, ctx, src, file_path, line)
         if ft == FaultType.ATTRIBUTE_ERROR:
             return self._fix_none_check(signature, ctx, src, file_path, line)
         if ft == FaultType.INDEX_ERROR:
             return self._fix_index_guard(signature, ctx, src, file_path, line)
+        if ft == FaultType.SYNTAX_ERROR:
+            return self._fix_syntax_error(signature, ctx, src, file_path, line)
 
         return PatchProposal(
             strategy=PatchStrategy.UNKNOWN,
@@ -355,7 +359,42 @@ class FixPolicy:
             )
         return PatchProposal(
             strategy=PatchStrategy.UNKNOWN,
-            summary="ValueError/TypeError with no safe deterministic guard.",
+            summary="ValueError with no safe deterministic guard.",
+            confidence=0.2,
+        )
+
+    def _fix_type_coercion(self, sig, ctx, src, file_path, line) -> PatchProposal:
+        patched = _coerce_types(src, sig.message or "")
+        if patched != src:
+            return self._proposal_from_diff(
+                src, patched, file_path, line,
+                PatchStrategy.TYPE_COERCION,
+                "Applied type coercion / validation guard to fix TypeError.",
+            )
+        guard = _prepend_empty_guard(src)
+        if guard != src:
+            return self._proposal_from_diff(
+                src, guard, file_path, line,
+                PatchStrategy.TYPE_COERCION,
+                "Added input type validation guard before invocation.",
+            )
+        return PatchProposal(
+            strategy=PatchStrategy.UNKNOWN,
+            summary="TypeError with no safe deterministic rewrite.",
+            confidence=0.2,
+        )
+
+    def _fix_syntax_error(self, sig, ctx, src, file_path, line) -> PatchProposal:
+        patched = _fix_syntax_issues(src)
+        if patched != src:
+            return self._proposal_from_diff(
+                src, patched, file_path, line,
+                PatchStrategy.BOUNDARY_GUARD,
+                "Repaired syntax error (missing colon or unclosed bracket).",
+            )
+        return PatchProposal(
+            strategy=PatchStrategy.UNKNOWN,
+            summary="SyntaxError could not be deterministically repaired.",
             confidence=0.2,
         )
 
@@ -532,24 +571,87 @@ def _prepend_empty_guard(src: str) -> str:
 def _safe_dict_get(src: str) -> str:
     import re
 
-    # Convert `d[key]` to `d.get(key, default)` where d is a simple name.
-    return re.sub(r"(?<![.\w])(\w+)\[(\w+)\]", r"\1.get(\2, None)", src, count=1)
+    # Convert `d['key']` or `d["key"]` or `d[key]` to `d.get('key', None)`
+    res = re.sub(r"(?<![.\w])([a-zA-Z_]\w*)\[(['\"][^'\"]+['\"])\]", r"\1.get(\2, None)", src, count=1)
+    if res != src:
+        return res
+    return re.sub(r"(?<![.\w])([a-zA-Z_]\w*)\[([a-zA-Z_]\w*)\]", r"\1.get(\2, None)", src, count=1)
 
 
 def _add_none_guard(src: str) -> str:
     import re
 
-    m = re.search(r"return\s+([\w.]+)\.", src)
+    m = re.search(r"return\s+([a-zA-Z_]\w*)\.", src)
+    if not m:
+        m = re.search(r"\b([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)", src)
     if not m:
         return src
     expr = m.group(1)
-    indent = _body_indent(src.splitlines())
-    guard = f"{indent}if {expr} is None:\n{indent}    return None"
+    if expr in ("self", "cls", "math", "os", "sys", "re", "ast", "time"):
+        matches = list(re.finditer(r"\b([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)", src))
+        for match in matches:
+            v = match.group(1)
+            if v not in ("self", "cls", "math", "os", "sys", "re", "ast", "time"):
+                expr = v
+                break
     lines = src.splitlines()
-    insert_at = _body_start_index(lines)
-    if any("is None" in ln for ln in lines):
+    if any(f"{expr} is None" in ln or f"{expr} is not None" in ln for ln in lines):
         return src
+    indent = _body_indent(lines)
+    guard = f"{indent}if {expr} is None:\n{indent}    return None"
+    insert_at = _body_start_index(lines)
     return "\n".join(lines[:insert_at] + guard.splitlines() + lines[insert_at:])
+
+
+def _coerce_types(src: str, message: str) -> str:
+    import re
+
+    msg = message.lower()
+    # Case 1: string + int / int + str concatenation
+    if "concatenate" in msg or "str" in msg:
+        m = re.search(r"return\s+([a-zA-Z_]\w*)\s*\+\s*([a-zA-Z_]\w*)", src)
+        if m:
+            v1, v2 = m.group(1), m.group(2)
+            return src.replace(f"{v1} + {v2}", f"str({v1}) + str({v2})", 1)
+    # Case 2: unsupported operand for + (int + str)
+    if "unsupported operand" in msg or "int" in msg or "float" in msg:
+        m = re.search(r"return\s+([a-zA-Z_]\w*)\s*\+\s*([a-zA-Z_]\w*)", src)
+        if m:
+            v1, v2 = m.group(1), m.group(2)
+            return src.replace(f"{v1} + {v2}", f"int({v1}) + int({v2})", 1)
+    # Default: try str conversion on return binary op
+    m = re.search(r"return\s+([a-zA-Z_]\w*)\s*\+\s*([a-zA-Z_]\w*)", src)
+    if m:
+        v1, v2 = m.group(1), m.group(2)
+        if v1 not in ("self", "cls") and v2 not in ("self", "cls"):
+            return src.replace(f"{v1} + {v2}", f"str({v1}) + str({v2})", 1)
+    return src
+
+
+def _fix_syntax_issues(src: str) -> str:
+    import re
+
+    lines = src.splitlines()
+    fixed_lines = []
+    modified = False
+    for line in lines:
+        stripped = line.rstrip()
+        # Missing trailing colon on control statements or def/class
+        if re.search(r"^\s*(def|class|if|elif|else|for|while|try|except|finally|with)\b", stripped):
+            if not stripped.endswith(":") and not stripped.endswith("\\"):
+                stripped += ":"
+                modified = True
+        # Mismatched unclosed parenthesis at end of line
+        open_parens = stripped.count("(")
+        close_parens = stripped.count(")")
+        if open_parens > close_parens:
+            stripped += ")" * (open_parens - close_parens)
+            modified = True
+        fixed_lines.append(stripped)
+    if modified:
+        candidate = "\n".join(fixed_lines)
+        return candidate
+    return src
 
 
 def _body_indent(lines: list[str]) -> str:

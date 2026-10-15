@@ -103,15 +103,29 @@ class LogTriageTeammate:
 class CodeInspectorTeammate:
     """Phase 2 Teammate: AST syntactic slicing, context compression, and patch proposal."""
 
-    def __init__(self, repo_root: str) -> None:
+    def __init__(self, repo_root: str, skills_dir: Optional[str] = None) -> None:
         self.repo_root = repo_root
+        self.skills_dir = skills_dir
         self._inspector = ast_tool.ASTInspector(repo_root)
         self._policy = ast_tool.FixPolicy()
 
     def inspect(self, sig: FaultSignature, iteration: int = 1) -> Tuple[ASTContext, PatchProposal, float]:
-        """Extract AST context and synthesize fix hypothesis."""
+        """Extract AST context and synthesize fix hypothesis with memory recall."""
         t0 = time.time()
         ctx = self._inspector.inspect(sig)
+
+        if self.skills_dir:
+            recalled = skill_tool.lookup_pattern(sig.fingerprint, self.skills_dir)
+            if recalled.get("found") and recalled.get("trusted"):
+                pat_dict = recalled.get("pattern", {})
+                proposal = self._policy.propose(sig, ctx)
+                proposal.strategy = pat_dict.get("strategy", proposal.strategy)
+                proposal.source = "replay_knowledge"
+                proposal.confidence = 0.95
+                proposal.summary = f"[Memory Hit: trusted pattern] {proposal.summary}"
+                proposal.iteration = iteration
+                return ctx, proposal, time.time() - t0
+
         proposal = self._policy.propose(sig, ctx)
         proposal.iteration = iteration
         return ctx, proposal, time.time() - t0
@@ -181,7 +195,7 @@ class SwarmLeader:
         """Instantiate the 4 specialized Teammate workers."""
         return {
             "triage": LogTriageTeammate(repo_root),
-            "inspector": CodeInspectorTeammate(repo_root),
+            "inspector": CodeInspectorTeammate(repo_root, skills_dir=skills_dir),
             "verifier": SandboxVerifierTeammate(repo_root, timeout=self.config.healing.pytest_timeout),
             "evolver": SkillEvolverTeammate(skills_dir),
         }
@@ -223,7 +237,7 @@ class SwarmLeader:
 
         Supports DeepSeek, OpenAI, and Huawei Cloud MaaS providers.
         """
-        if self.config.mode != EngineMode.LIVE or not self.config.llm.api_key:
+        if self.config.mode != EngineMode.LIVE or not self.config.client.api_key:
             return None
         try:
             from openjiuwen.core.foundation.llm import ModelClientConfig, ProviderType
@@ -231,12 +245,12 @@ class SwarmLeader:
 
             client_cfg = ModelClientConfig(
                 provider=ProviderType.OPENAI,
-                api_key=self.config.llm.api_key,
-                base_url=self.config.llm.api_base,
+                api_key=self.config.client.api_key,
+                base_url=self.config.client.api_base,
             )
             comp_cfg = LLMCompConfig(
                 model_client_config=client_cfg,
-                model_id=self.config.llm.model_name,
+                model_id=self.config.client.model_name,
                 system_prompt_template="You are an expert software engineer analyzing CI failures.",
                 user_prompt_template="{prompt}",
             )
@@ -306,6 +320,22 @@ class SwarmLeader:
             "proposal": proposal.model_dump(),
             "durations": {"triage": dt, "inspect": dt2},
         }
+
+    def build_workflow_by_intent(self, intent: str, repo_root: str, skills_dir: str = ".") -> Any:
+        """Dynamically build and route to the corresponding workflow subgraph based on Intent."""
+        flow = self._flow_factory(self.config, repo_root, skills_dir)
+        if intent == Intent.INSPECT_ONLY:
+            return flow.build_inspect_workflow()
+        return flow.build_heal_workflow()
+
+    def dispatch_workflow(
+        self, intent: str, log_text: str, repo_root: str, skills_dir: str = "."
+    ) -> Any:
+        """Dynamically dispatch the request to the matching workflow execution route."""
+        decision = self.plan(request=intent, repo_root=repo_root, skills_dir=skills_dir)
+        if decision.intent == Intent.INSPECT_ONLY:
+            return self.inspect(log_text, repo_root)
+        return self.heal(log_text, repo_root, skills_dir)
 
     # ------------------------------------------------------------------ #
     # Observability & Metrics                                            #

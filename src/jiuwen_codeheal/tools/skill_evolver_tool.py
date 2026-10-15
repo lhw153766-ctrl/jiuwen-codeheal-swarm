@@ -131,6 +131,29 @@ class SkillLibrary:
 # --------------------------------------------------------------------------- #
 
 
+def distill_pair(
+    sig: FaultSignature, proposal: PatchProposal, healed: bool = True
+) -> LearnedPattern:
+    """Distil a specific (FaultSignature, PatchProposal) pair into a LearnedPattern."""
+    template = ""
+    if proposal.hunks:
+        template = proposal.hunks[0].new
+    elif proposal.unified_diff:
+        template = proposal.unified_diff
+
+    return LearnedPattern(
+        fingerprint=sig.fingerprint,
+        fault_type=sig.fault_type,
+        root_cause=_root_cause_text(sig),
+        strategy=proposal.strategy,
+        fix_template=template,
+        occurrences=1,
+        success_count=1 if healed else 0,
+        example_file=sig.file_path or "",
+        updated_at=time.time(),
+    )
+
+
 def distill(traj: HealingTrajectory) -> Optional[LearnedPattern]:
     """Turn a completed trajectory into a :class:`LearnedPattern`.
 
@@ -143,8 +166,25 @@ def distill(traj: HealingTrajectory) -> Optional[LearnedPattern]:
         return None
 
     healed = traj.status.value == "healed"
-    strategy = _dominant_strategy(traj)
-    fix_template = _fix_template(traj)
+
+    # Match patch corresponding to sig's file / fault if multiple patches exist
+    matching_patch = None
+    if sig.file_path:
+        for p in reversed(traj.patches):
+            if any(h.file == sig.file_path for h in p.hunks):
+                matching_patch = p
+                break
+    if matching_patch is None and traj.patches:
+        matching_patch = traj.patches[0]
+
+    strategy = matching_patch.strategy if matching_patch else _dominant_strategy(traj)
+    fix_template = ""
+    if matching_patch and matching_patch.hunks:
+        fix_template = matching_patch.hunks[0].new
+    elif matching_patch and matching_patch.unified_diff:
+        fix_template = matching_patch.unified_diff
+    else:
+        fix_template = _fix_template(traj)
 
     pattern = LearnedPattern(
         fingerprint=sig.fingerprint,
@@ -193,14 +233,52 @@ def _root_cause_text(sig: FaultSignature) -> str:
 
 
 def evolve(traj: HealingTrajectory, skills_dir: str | Path) -> Optional[LearnedPattern]:
-    """Distil *traj*, merge into the library, and persist both artefacts."""
+    """Distil *traj*, merge into the library, and persist both artefacts.
+
+    When *traj* contains multiple resolved faults in `traj.resolved_faults` paired
+    with `traj.patches`, each pair is independently distilled and merged into the
+    skill library, populating `traj.learned_patterns`.
+    """
+    healed = traj.status.value == "healed"
+    lib = SkillLibrary(skills_dir)
+    patterns = lib.load_patterns()
+
+    # Multi-fault independent distillation
+    if traj.resolved_faults and len(traj.resolved_faults) == len(traj.patches):
+        evolved_list: list[LearnedPattern] = []
+        for sig, prop in zip(traj.resolved_faults, traj.patches):
+            pat = distill_pair(sig, prop, healed=healed)
+            matched = False
+            for p in patterns:
+                if p.fingerprint == pat.fingerprint:
+                    p.occurrences += 1
+                    p.success_count += pat.success_count
+                    p.root_cause = pat.root_cause
+                    p.strategy = pat.strategy
+                    p.fix_template = pat.fix_template or p.fix_template
+                    p.example_file = pat.example_file or p.example_file
+                    p.updated_at = time.time()
+                    lib.append_markdown(traj, p)
+                    evolved_list.append(p)
+                    matched = True
+                    break
+            if not matched:
+                patterns.append(pat)
+                lib.append_markdown(traj, pat)
+                evolved_list.append(pat)
+        lib.save_patterns(patterns)
+        traj.learned_patterns = evolved_list
+        if evolved_list:
+            traj.learned_pattern = evolved_list[-1]
+            return evolved_list[-1]
+        return None
+
+    # Single-fault standard distillation
     pattern = distill(traj)
     if pattern is None:
         return None
 
-    lib = SkillLibrary(skills_dir)
-    patterns = lib.load_patterns()
-    for idx, p in enumerate(patterns):
+    for p in patterns:
         if p.fingerprint == pattern.fingerprint:
             p.occurrences += 1
             p.success_count += pattern.success_count
@@ -211,11 +289,15 @@ def evolve(traj: HealingTrajectory, skills_dir: str | Path) -> Optional[LearnedP
             p.updated_at = time.time()
             lib.save_patterns(patterns)
             lib.append_markdown(traj, p)
+            traj.learned_patterns = [p]
+            traj.learned_pattern = p
             return p
 
     patterns.append(pattern)
     lib.save_patterns(patterns)
     lib.append_markdown(traj, pattern)
+    traj.learned_patterns = [pattern]
+    traj.learned_pattern = pattern
     return pattern
 
 

@@ -89,10 +89,15 @@ python -m jiuwen_codeheal.cli --demo
 codeheal demo
 ```
 
-### 3. 运行全量单元与端到端测试
+### 3. 运行全量单元与端到端测试 (34 项全量绿灯)
 ```bash
 pytest -v tests
 ```
+全量包含 6 个测试模块共 34 项用例（涵盖 AST 精准切片、日志状态机、沙箱白名单与语法预检、Skill 独立经验蒸馏、经验召回提权、双模动态优雅降级、多工作流动态路由调度及端到端自愈），100% 稳定通过。
+
+### 4. 多工作流动态调度 (Multi-Workflow Dynamic Routing)
+- **快速诊断流（InspectFlow）**：`Start -> triage -> inspect -> End`，毫秒级分析报错堆栈与 AST 依赖切片；
+- **四阶段全自愈流（SwarmFlow）**：`Start -> triage -> inspect -> verify -> evolve -> End`，驱动隔离沙箱验证与经验自演进。
 
 ---
 

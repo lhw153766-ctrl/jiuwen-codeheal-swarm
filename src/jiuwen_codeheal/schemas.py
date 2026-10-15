@@ -250,10 +250,12 @@ class HealingTrajectory(BaseModel):
     mode: str = "replay"
     iterations: int = 0
     fault: Optional[FaultSignature] = None
+    resolved_faults: list[FaultSignature] = Field(default_factory=list)
     ast_context: Optional[ASTContext] = None
     patches: list[PatchProposal] = Field(default_factory=list)
     verification: Optional[VerificationResult] = None
     learned_pattern: Optional[LearnedPattern] = None
+    learned_patterns: list[LearnedPattern] = Field(default_factory=list)
     diff: str = ""
     trace: list[TraceStep] = Field(default_factory=list)
     started_at: float = Field(default_factory=time.time)

@@ -72,7 +72,9 @@ venv.bak/
 
 # Logs
 *.log
+err.log
 logs/
 
-# Local demo scratch reports
+# Local demo scratch reports & review bundle
 docs/_last_demo_report.md
+repo_review_bundle.md

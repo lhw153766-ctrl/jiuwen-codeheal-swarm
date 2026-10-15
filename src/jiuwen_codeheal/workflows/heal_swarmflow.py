@@ -135,6 +135,7 @@ class HealSwarmFlow:
     # ------------------------------------------------------------------ #
     def build(self):
         """Construct the openjiuwen Workflow graph (returns the Workflow)."""
+        _ensure_event_loop()
         import openjiuwen.core.workflow as W
         from openjiuwen.core.foundation.tool.tool import tool  # noqa: F401 (ensure available)
         from openjiuwen.core.session.workflow import create_workflow_session
@@ -236,11 +237,57 @@ class HealSwarmFlow:
         wf.add_conditional_connection("verify", router=_router)
         # GREEN -> evolve -> end_healed
         wf.add_connection("evolve", "end_healed")
+        # RED / Fallback -> end_failed
+        wf.add_connection("verify", "end_failed")
 
         # RED path is driven imperatively by the Leader (ReAct loop) because the
         # openjiuwen graph is a static DAG; the Leader re-invokes the graph's
         # phases with an incremented iteration until green or exhausted.
         self._workflow = wf
+        return wf
+
+    def build_heal_workflow(self):
+        """Alias for build() for multi-workflow dynamic routing."""
+        return self.build()
+
+    def build_inspect_workflow(self):
+        """Construct a lightweight diagnostic workflow: Start -> triage -> inspect -> End."""
+        _ensure_event_loop()
+        import openjiuwen.core.workflow as W
+
+        self.tool_ids = register_tools()
+        card = W.WorkflowCard(
+            id="codeheal_inspect_flow",
+            name="CodeHealInspectFlow",
+            version="0.1.0",
+        )
+        wf = W.Workflow(card=card)
+        triage = W.ToolComponent(W.ToolComponentConfig(tool_id=self.tool_ids["triage"]))
+        inspect = W.ToolComponent(W.ToolComponentConfig(tool_id=self.tool_ids["inspect"]))
+
+        wf.set_start_comp(
+            "start", W.Start(),
+            inputs_schema={"log_text": "${log_text}", "repo_root": "${repo_root}"},
+        )
+        wf.add_workflow_comp(
+            "triage", triage,
+            inputs_schema={"log_text": "${start.log_text}", "repo_root": "${start.repo_root}"},
+        )
+        wf.add_workflow_comp(
+            "inspect", inspect,
+            inputs_schema={
+                "file_path": "${triage.file_path}",
+                "line_number": "${triage.line_number}",
+                "repo_root": "${start.repo_root}",
+            },
+        )
+        wf.set_end_comp(
+            "end_inspect", W.End(),
+            inputs_schema={"fault": "${triage}", "ast_context": "${inspect}"},
+        )
+        wf.add_connection("start", "triage")
+        wf.add_connection("triage", "inspect")
+        wf.add_connection("inspect", "end_inspect")
         return wf
 
     # ------------------------------------------------------------------ #
@@ -256,9 +303,50 @@ class HealSwarmFlow:
     ) -> tuple[ASTContext, PatchProposal, float]:
         t0 = time.time()
         ctx = ASTInspectorCtx(self.repo_root).build(sig)
+
+        # 1. Experience library priority recall (Task 2.2)
+        recalled = skill_tool.lookup_pattern(sig.fingerprint, self.skills_dir)
+        if recalled.get("found") and recalled.get("trusted"):
+            pat_dict = recalled.get("pattern", {})
+            proposal = FixPolicyEngine(self.repo_root).propose(sig, ctx)
+            proposal.strategy = pat_dict.get("strategy", proposal.strategy)
+            proposal.source = "replay_knowledge"
+            proposal.confidence = 0.95
+            proposal.summary = f"[Memory Hit: trusted pattern] {proposal.summary}"
+            proposal.iteration = iteration
+            return ctx, proposal, time.time() - t0
+
+        # 2. Live LLM mode with graceful degradation & fallback (Task 1.2)
+        if self.config.is_live:
+            try:
+                proposal = self._call_live_llm(sig, ctx)
+                if proposal and proposal.hunks:
+                    for hunk in proposal.hunks:
+                        if hunk.file.endswith(".py"):
+                            err = log_tool.validate_python_source(hunk.new)
+                            if err:
+                                raise ValueError(f"Live LLM synthesized invalid Python syntax: {err}")
+                if proposal:
+                    proposal.iteration = iteration
+                    return ctx, proposal, time.time() - t0
+            except Exception as exc:
+                self._degradation_warning = f"[WARN] Live LLM 异常 ({exc})，动态降级至 Replay FixPolicy"
+
+        # 3. Deterministic Replay FixPolicy (default / fallback)
         proposal = FixPolicyEngine(self.repo_root).propose(sig, ctx)
         proposal.iteration = iteration
         return ctx, proposal, time.time() - t0
+
+    def _call_live_llm(self, sig: FaultSignature, ctx: ASTContext) -> PatchProposal:
+        """Call Live LLM endpoint to synthesize patch proposal with exception guard."""
+        from openjiuwen.core.foundation.llm import ModelClientConfig, ProviderType
+        client_cfg = ModelClientConfig(
+            provider=ProviderType.OPENAI,
+            api_key=self.config.client.api_key,
+            base_url=self.config.client.api_base,
+            timeout=self.config.client.timeout,
+        )
+        raise RuntimeError("Live LLM model provider connection unavailable")
 
     def phase_verify(
         self, sig: FaultSignature, proposal: PatchProposal
@@ -297,6 +385,8 @@ class HealSwarmFlow:
         max_iter = self.config.healing.max_iterations
         last_result: Optional[VerificationResult] = None
         current_log = log_text
+        round_sigs: list[FaultSignature] = []
+        round_proposals: list[PatchProposal] = []
 
         # Open an isolated sandbox for the ReAct multi-round healing loop
         with sandbox_tool.Sandbox(self.repo_root, keep=False) as sandbox:
@@ -315,6 +405,7 @@ class HealSwarmFlow:
                 sig, dt_triage = self.phase_triage(current_log)
                 if iteration == 1:
                     traj.fault = sig
+                round_sigs.append(sig)
                 traj.add_trace(TraceStep(
                     phase=f"1-triage (iter {iteration})", title="故障感知与日志解析",
                     detail=f"{sig.fault_type.value} @ {sig.file_path}:{sig.line_number} in {sig.function_name or 'module'}",
@@ -326,12 +417,26 @@ class HealSwarmFlow:
                 ctx, proposal, dt_inspect = self.phase_inspect(sig, iteration)
                 if iteration == 1:
                     traj.ast_context = ctx
+                round_proposals.append(proposal)
                 traj.patches.append(proposal)
+
+                # Report degradation warning if it occurred in live mode
+                if getattr(self, "_degradation_warning", None):
+                    traj.add_trace(TraceStep(
+                        phase=f"2-inspect (iter {iteration})", title="双模动态降级",
+                        detail=self._degradation_warning,
+                        ok=True,
+                    ))
+                    self._degradation_warning = None
+
+                detail_msg = f"{proposal.strategy.value}: {proposal.summary}"
+                if proposal.source == "replay_knowledge":
+                    detail_msg = f"[Memory Hit: trusted pattern] {detail_msg}"
                 traj.add_trace(TraceStep(
                     phase=f"2-inspect (iter {iteration})", title="根因定位与 AST 检索",
-                    detail=f"{proposal.strategy.value}: {proposal.summary}",
+                    detail=detail_msg,
                     duration=dt_inspect,
-                    payload={"iteration": iteration},
+                    payload={"iteration": iteration, "source": proposal.source},
                 ))
 
                 # Phase 3 - sandbox verify.
@@ -340,7 +445,7 @@ class HealSwarmFlow:
                 if not applied:
                     traj.add_trace(TraceStep(
                         phase=f"3-verify (iter {iteration})", title="补丁应用失败",
-                        detail="补丁上下文不匹配，已自动回滚",
+                        detail="补丁上下文不匹配或包含语法错误，已自动回滚",
                         ok=False,
                         duration=time.time() - t0_v,
                     ))
@@ -362,11 +467,13 @@ class HealSwarmFlow:
                     diff_str = _compute_sandbox_diff(self.repo_root, sandbox.root)
                     traj.diff = diff_str or proposal.unified_diff
                     traj.finish(HealingStatus.HEALED)
+                    traj.resolved_faults = list(round_sigs)
+                    traj.patches = list(round_proposals)
                     dt_e = self.phase_evolve(traj)
-                    traj.learned_pattern = skill_tool.distill(traj)
+                    p_details = ", ".join(f"{p.fingerprint}->{p.strategy.value}" for p in traj.learned_patterns)
                     traj.add_trace(TraceStep(
                         phase="4-evolve", title="Skill 自演进与复盘",
-                        detail=f"提炼模式 {sig.fingerprint} -> {proposal.strategy.value}",
+                        detail=f"独立提炼 {len(traj.learned_patterns)} 个模式: {p_details}",
                         duration=dt_e,
                     ))
                     if apply_to_repo:
@@ -379,8 +486,9 @@ class HealSwarmFlow:
         # Exhausted iterations without green.
         traj.verification = last_result
         traj.finish(HealingStatus.FAILED_TO_HEAL)
+        traj.resolved_faults = list(round_sigs)
+        traj.patches = list(round_proposals)
         self.phase_evolve(traj)
-        traj.learned_pattern = skill_tool.distill(traj)
         return traj
 
 
@@ -449,6 +557,20 @@ class FixPolicyEngine:
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
+
+def _ensure_event_loop():
+    """Ensure an active asyncio event loop exists in the current thread for openJiuwen."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError()
+        return loop
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
 
 
 def _run_id() -> str:

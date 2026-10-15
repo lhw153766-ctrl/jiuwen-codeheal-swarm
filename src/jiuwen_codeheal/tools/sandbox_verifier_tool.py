@@ -124,6 +124,24 @@ class Sandbox:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
+    def save_checkpoint(self) -> dict[str, str]:
+        """Save a snapshot of all tracked Python files in the sandbox (State Checkpoint)."""
+        if not self.root:
+            return {}
+        cp: dict[str, str] = {}
+        for p in self.root.rglob("*.py"):
+            rel = str(p.relative_to(self.root)).replace("\\", "/")
+            try:
+                cp[rel] = p.read_text(encoding="utf-8")
+            except Exception:
+                pass
+        return cp
+
+    def restore_checkpoint(self, checkpoint: dict[str, str]) -> None:
+        """Restore sandbox state from a saved checkpoint (Rollback)."""
+        for rel, content in checkpoint.items():
+            self.abs_write(rel, content)
+
 
 # --------------------------------------------------------------------------- #
 # Patch application                                                            #
@@ -131,12 +149,12 @@ class Sandbox:
 
 
 def apply_patch(sandbox: Sandbox, patch: PatchProposal) -> bool:
-    """Apply a patch inside the sandbox with atomic rollback.
+    """Apply a patch inside the sandbox with atomic rollback and syntax pre-check.
 
     Strategy: for each hunk, replace the ``old`` source snippet with the ``new``
-    one inside the target file. The replacement is exact-string based but
-    constrained to the file's real content, and we verify the ``old`` snippet
-    actually exists before touching the file. Any failure rolls the file back.
+    one inside the target file. Before persisting, verify that the modified file
+    has valid Python syntax (`ast.parse`); any SyntaxError or context mismatch
+    causes an immediate atomic rollback without spawning subprocess tests.
 
     Returns ``True`` if at least one hunk was applied and all applied cleanly.
     """
@@ -165,11 +183,22 @@ def apply_patch(sandbox: Sandbox, patch: PatchProposal) -> bool:
                     f"the AST slice drifted. Refusing to apply."
                 )
             updated = current.replace(old, new, 1)
+
+            # Round 2: Syntax pre-check (State Checkpoint & Rollback)
+            if rel.endswith(".py"):
+                import ast
+                try:
+                    ast.parse(updated)
+                except SyntaxError as syn_err:
+                    raise SyntaxError(
+                        f"Patch introduced SyntaxError in '{rel}': {syn_err}"
+                    ) from syn_err
+
             sandbox.abs_write(rel, updated)
             applied += 1
         return applied > 0
     except Exception:
-        # Rollback every touched file.
+        # Atomic rollback
         for rel, content in backups.items():
             try:
                 sandbox.abs_write(rel, content)

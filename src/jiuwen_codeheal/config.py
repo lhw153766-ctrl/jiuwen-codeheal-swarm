@@ -155,6 +155,11 @@ class CodeHealConfig(BaseModel):
         return self.mode == EngineMode.LIVE and bool(self.client.api_key)
 
     @property
+    def llm(self) -> ModelClientSettings:
+        """Alias for self.client (backward compatibility and ergonomics)."""
+        return self.client
+
+    @property
     def provider_type(self) -> str:
         """Canonical openjiuwen ``ProviderType`` key for the configured provider."""
         key = self.client.provider.lower()

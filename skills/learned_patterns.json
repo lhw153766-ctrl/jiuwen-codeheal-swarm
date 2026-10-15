@@ -1,29 +1,29 @@
 {
   "version": "0.1.0",
-  "updated_at": 1792075668.851685,
+  "updated_at": 1792076962.488198,
   "count": 2,
   "patterns": [
-    {
-      "fingerprint": "91fb279fe36a86e8",
-      "fault_type": "index_error",
-      "root_cause": "index_error in `tests/test_buggy.py` function `test_find_max` — list index out of range",
-      "strategy": "unknown",
-      "fix_template": "",
-      "occurrences": 1,
-      "success_count": 0,
-      "example_file": "tests/test_buggy.py",
-      "updated_at": 1792042060.4115744
-    },
     {
       "fingerprint": "4747dcb7db75d17f",
       "fault_type": "index_error",
       "root_cause": "index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range",
       "strategy": "boundary_guard",
-      "fix_template": "def average(values: List[float]) -> float:\n    \"\"\"返回数值列表的平均值。\n\n    BUG: 空列表未守卫，触发 ZeroDivisionError。\n    \"\"\"\n    if not values:\n        return 0.0\n    return sum(values) / len(values)",
-      "occurrences": 2,
-      "success_count": 2,
+      "fix_template": "def find_max(seq: Sequence[int]) -> int:\n    \"\"\"返回序列中的最大值。\n\n    BUG: 循环访问 ``seq[i]`` 而 ``i`` 取遍 ``range(len(seq))``，当\n    ``i == len(seq) - 1`` 时 ``seq[i]`` 越界，触发 ``IndexError``。\n    正确写法应访问 ``seq[i]``，或用内置 ``max(seq)``。\n    \"\"\"\n    best = seq[0]\n    for i in range(len(seq)):  # BUG 1: seq[i] 在末轮越界\n        if seq[i] > best:\n            best = seq[i]\n    return best",
+      "occurrences": 3,
+      "success_count": 3,
       "example_file": "buggy_repo_demo/calc.py",
-      "updated_at": 1792075668.851685
+      "updated_at": 1792076962.4876292
+    },
+    {
+      "fingerprint": "fc077a19126271d9",
+      "fault_type": "value_error",
+      "root_cause": "value_error in `buggy_repo_demo/calc.py` function `average` — division by zero",
+      "strategy": "boundary_guard",
+      "fix_template": "def average(values: List[float]) -> float:\n    \"\"\"返回数值列表的平均值。\n\n    BUG: 空列表未守卫，触发 ZeroDivisionError。\n    \"\"\"\n    if not values:\n        return 0.0\n    return sum(values) / len(values)",
+      "occurrences": 3,
+      "success_count": 3,
+      "example_file": "buggy_repo_demo/calc.py",
+      "updated_at": 1792076962.4876957
     }
   ]
 }
