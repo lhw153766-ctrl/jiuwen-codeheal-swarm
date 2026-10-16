@@ -143,7 +143,7 @@ def _print_result(console, traj: HealingTrajectory) -> None:
 
 def cmd_demo(args: argparse.Namespace) -> int:
     Console, _, _, _ = _rich()
-    console = Console() if Console else None
+    console = Console(width=120) if Console else None
     repo = Path(args.repo).resolve() if getattr(args, "repo", None) else _DEFAULT_DEMO_REPO.resolve()
     skills = Path(args.skills).resolve() if getattr(args, "skills", None) else _DEFAULT_SKILLS.resolve()
     config = CodeHealConfig.load()
@@ -179,7 +179,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 def cmd_heal(args: argparse.Namespace) -> int:
     Console, _, _, _ = _rich()
-    console = Console() if Console else None
+    console = Console(width=120) if Console else None
     repo = Path(args.repo).resolve() if getattr(args, "repo", None) else Path(".").resolve()
     skills = Path(args.skills).resolve() if getattr(args, "skills", None) else _DEFAULT_SKILLS.resolve()
     log_file = getattr(args, "log", None)
@@ -195,7 +195,7 @@ def cmd_heal(args: argparse.Namespace) -> int:
 
 def cmd_inspect(args: argparse.Namespace) -> int:
     Console, _, _, _ = _rich()
-    console = Console() if Console else None
+    console = Console(width=120) if Console else None
     repo = Path(args.repo).resolve() if getattr(args, "repo", None) else Path(".").resolve()
     log_file = getattr(args, "log", None)
     log_text = Path(log_file).read_text(encoding="utf-8") if log_file else sys.stdin.read()
@@ -221,7 +221,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     from rich.table import Table
 
     Console, _, _, _ = _rich()
-    console = Console() if Console else None
+    console = Console(width=120) if Console else None
 
     if console:
         console.print("[bold cyan]>> 正在启动 Jiuwen-CodeHeal Swarm 6 大典型故障场景量化评测 (Benchmark)...[/bold cyan]")
@@ -281,7 +281,7 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     from jiuwen_codeheal.dashboard import generate_dashboard_html
 
     Console, _, _, _ = _rich()
-    console = Console() if Console else None
+    console = Console(width=120) if Console else None
 
     repo = Path(args.repo).resolve() if getattr(args, "repo", None) else _DEFAULT_DEMO_REPO.resolve()
     skills = Path(args.skills).resolve() if getattr(args, "skills", None) else _DEFAULT_SKILLS.resolve()

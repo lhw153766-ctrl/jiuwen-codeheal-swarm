@@ -254,3 +254,29 @@ def test_call_live_llm_behavior(tmp_path: Path):
     ctx_res, proposal, dt = flow.phase_inspect(sig, iteration=1)
     assert proposal is not None
     assert getattr(flow, "_degradation_warning", None) is not None
+
+
+def test_swarm_leader_build_react_agent(tmp_path: Path):
+    """Verify SwarmLeader.build_react_agent constructs openjiuwen ReActAgent cleanly."""
+    from jiuwen_codeheal.swarm_leader import SwarmLeader
+
+    leader = SwarmLeader(CodeHealConfig.load())
+    agent = leader.build_react_agent(str(tmp_path), str(tmp_path / "skills"))
+    # In this environment, openjiuwen single_agent react_agent is installed
+    assert agent is not None
+    assert "ReActAgent" in type(agent).__name__
+
+
+def test_round4_pitch_script_and_demo_doc_exists():
+    """Verify docs/04_决赛路演PPT大纲与3分钟演示脚本.md is comprehensive and valid."""
+    repo_root = Path(__file__).resolve().parent.parent
+    candidates = list((repo_root / "docs").glob("*04*"))
+    assert len(candidates) > 0, "04_决赛路演PPT大纲与3分钟演示脚本.md must exist"
+    doc_path = candidates[0]
+    text = doc_path.read_text(encoding="utf-8")
+    assert len(text) >= 2000, f"Expected at least 2000 chars, got {len(text)}"
+    assert "10 页路演答辩 PPT" in text
+    assert "3 分钟（180 秒）DEMO 参赛视频分镜" in text
+    assert "评委一键复现命令速查表" in text
+
+

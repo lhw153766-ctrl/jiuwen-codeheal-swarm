@@ -154,19 +154,19 @@ codeheal dashboard --no-browser
 +-- [OK] 故障感知与日志解析 (1-triage (iter 1), 0.00s)
 |   `-- index_error @ buggy_repo_demo/calc.py:22 in find_max
 +-- [OK] 根因定位与 AST 检索 (2-inspect (iter 1), 0.00s)
-|   `-- boundary_guard: Fixed off-by-one index overrun by changing index access from [idx + 1] to [idx].
-+-- [FAIL] 沙箱补丁回归验证 (3-verify (iter 1), 0.54s)
+|   `-- boundary_guard: [Memory Hit: trusted pattern] Fixed off-by-one index overrun by changing index access from [idx + 1] to [idx].
++-- [FAIL] 沙箱补丁回归验证 (3-verify (iter 1), 0.59s)
 |   `-- failed · 5/6 通过 (失败 1)
 +-- [OK] 故障感知与日志解析 (1-triage (iter 2), 0.00s)
 |   `-- value_error @ buggy_repo_demo/calc.py:32 in average
 +-- [OK] 根因定位与 AST 检索 (2-inspect (iter 2), 0.00s)
-|   `-- boundary_guard: Guard against empty input before minimum/aggregation call.
-+-- [OK] 沙箱补丁回归验证 (3-verify (iter 2), 0.50s)
+|   `-- boundary_guard: [Memory Hit: trusted pattern] Guard against empty input before minimum/aggregation call.
++-- [OK] 沙箱补丁回归验证 (3-verify (iter 2), 0.55s)
 |   `-- passed · 6/6 通过 (失败 0)
-`-- [OK] Skill 自演进与复盘 (4-evolve, 0.01s)
-    `-- 提炼模式 fc077a19126271d9 -> boundary_guard
+`-- [OK] Skill 自演进与复盘 (4-evolve, 0.00s)
+    `-- 提炼 2 个模式: 4747dcb7db75d17f->boundary_guard, fc077a19126271d9->boundary_guard
 +------------------ [SUCCESS] 自愈成功 · CI 由红变绿 ------------------+
-| 迭代 2 轮 · 耗时 4.03s                                               |
+| 迭代 2 轮 · 耗时 4.66s                                               |
 | 模式 replay                                                          |
 | 测试 6/6 通过 · 失败 0                                               |
 +----------------------------------------------------------------------+
@@ -201,6 +201,7 @@ codeheal dashboard --no-browser
      return sum(values) / len(values)  # BUG 2: 缺少空输入守卫
 
 报告已写入: docs/_last_demo_report.md
+控制台看板已生成: docs/dashboard.html
 ```
 
 ---
@@ -216,6 +217,7 @@ jiuwen-codeheal-swarm/
 │   ├── 01_初赛创意申报书.md             # 【核心评审件】大赛五要素、痛点、架构图与商业价值 (4000+ 字)
 │   ├── 02_系统架构与实现文档.md         # openJiuwen 图流转、多角色状态机与安全沙箱深度技术解构
 │   ├── 03_Benchmark量化评测报告.md      # 6 大典型工业场景量化基准评测报告 (100% 自愈 / 0% 回归)
+│   ├── 04_决赛路演PPT大纲与3分钟演示脚本.md # 【终审交付件】10页路演PPT大纲、180秒分镜配音脚本与复现指南
 │   └── dashboard.html                 # 交互式全链路可观测看板 (DAG 拓扑、Trace 甘特图、Diff 对比)
 ├── skills/
 │   ├── SKILL.md                       # JiuwenSwarm 规范的 CI 自愈 Skill 定义
@@ -232,7 +234,7 @@ jiuwen-codeheal-swarm/
 │   ├── dashboard.py                   # 交互式暗黑主题 HTML 可观测性看板生成器
 │   ├── tools/                         # 真实四大领域工具组件 (AST/日志/沙箱/经验进化)
 │   └── workflows/                     # openJiuwen Workflow 计算图编排 (SwarmFlow / InspectFlow)
-└── tests/                             # 44 项单元与端到端回归测试 (100% 稳定通过)
+└── tests/                             # 46 项单元与端到端回归测试 (100% 稳定通过)
 ```
 
 ---
@@ -242,6 +244,7 @@ jiuwen-codeheal-swarm/
 - 欲查阅大赛要求的初赛五要素、深度痛点对比与时序/数据流图，请阅读 **[docs/01_初赛创意申报书.md](docs/01_初赛创意申报书.md)**。
 - 欲深入了解 openJiuwen 图节点编排、安全沙箱白名单与 Skill 自进化机制，请阅读 **[docs/02_系统架构与实现文档.md](docs/02_系统架构与实现文档.md)**。
 - 欲查看 6 大工业场景量化实测数据、MTTR、回归率与 AST 上下文压缩对比，请阅读 **[docs/03_Benchmark量化评测报告.md](docs/03_Benchmark量化评测报告.md)**。
+- 欲查阅 10 页决赛路演答辩 PPT、180 秒分镜逐字配音脚本与评委速查指南，请阅读 **[docs/04_决赛路演PPT大纲与3分钟演示脚本.md](docs/04_决赛路演PPT大纲与3分钟演示脚本.md)**。
 - 欲体验端到端可视化暗黑主题大屏，请浏览器直接打开 **[docs/dashboard.html](docs/dashboard.html)**。
 
 ---

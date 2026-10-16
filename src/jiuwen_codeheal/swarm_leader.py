@@ -232,6 +232,49 @@ class SwarmLeader:
             logger.debug("WorkflowAgent initialization deferred: %s", exc)
             return None
 
+    def build_react_agent(self, repo_root: str, skills_dir: str) -> Optional[Any]:
+        """Construct an openJiuwen ReActAgent instance for autonomous reasoning loops.
+
+        Leverages openJiuwen's native ReActAgent, ReActAgentConfig, and AgentCard
+        to enable autonomous reasoning and tool invocation. Gracefully returns None
+        if dependencies are missing or initialization fails.
+        Completes openJiuwen's core stack: Workflow, WorkflowCard, LLMComponent,
+        WorkflowAgent, ReActAgent, Runner.
+        """
+        try:
+            try:
+                from openjiuwen.core.single_agent.agents.react_agent import (
+                    ReActAgent,
+                    ReActAgentConfig,
+                )
+                from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+
+                model_name = self.config.client.model_name or "deepseek-coder"
+                agent_cfg = ReActAgentConfig(
+                    model_name=model_name,
+                    api_key=self.config.client.api_key or "",
+                    api_base=self.config.client.api_base or "",
+                    workspace=str(repo_root),
+                )
+                card = AgentCard(
+                    id="jiuwen_codeheal_react_agent",
+                    name="ReActHealAgent",
+                    version="0.1.0",
+                    description="Autonomous ReAct Agent for Multi-Round CI Failure Healing",
+                    agent_config=agent_cfg,
+                )
+                return ReActAgent(card=card)
+            except Exception:
+                from openjiuwen.extensions.context_evolver.context_evolving_react_agent import (
+                    ReActAgent,
+                    ReActAgentConfig,
+                )
+                agent_cfg = ReActAgentConfig(model_name="deepseek-coder")
+                return ReActAgent(agent_config=agent_cfg)
+        except Exception as exc:
+            logger.debug("ReActAgent initialization deferred: %s", exc)
+            return None
+
     def build_llm_component(self) -> Optional[Any]:
         """Construct an openJiuwen LLMComponent when live API credentials are configured.
 

@@ -374,7 +374,7 @@ def render_benchmark_markdown(summary: BenchmarkSummary) -> str:
         "",
         "> **作品名称**：《Jiuwen-CodeHeal Swarm：基于 openJiuwen 与 JiuwenSwarm 多智能体协同进化的仓库级 CI 故障自愈与回归验证系统》  ",
         f"> **评测时间**：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(summary.timestamp))}  ",
-        "> **评测环境**：Python 3.11 · openjiuwen 0.1.19 · worksawrm 0.2.7 · Windows / Linux CI  ",
+        "> **评测环境**：Python 3.11 · openjiuwen 0.1.19 · workswarm 0.2.7 · Windows / Linux CI  ",
         "",
         "---",
         "",

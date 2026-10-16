@@ -391,10 +391,37 @@ class HealSwarmFlow:
             if not content:
                 raise RuntimeError("Empty response received from Live LLM")
 
+            from jiuwen_codeheal.tools.log_parser_tool import validate_python_source
+
+            extracted_code = ""
+            if "```python" in content:
+                extracted_code = content.split("```python", 1)[1].split("```", 1)[0].strip()
+            elif "```" in content:
+                extracted_code = content.split("```", 1)[1].split("```", 1)[0].strip()
+            elif "def " in content:
+                idx = content.find("def ")
+                extracted_code = content[idx:].strip()
+
             proposal = FixPolicyEngine(self.repo_root).propose(sig, ctx)
-            proposal.summary = f"[Live LLM] Generated fix for {sig.function_name or sig.file_path}"
-            proposal.source = "live_llm"
-            proposal.confidence = 0.88
+            if extracted_code and "def " in extracted_code and validate_python_source(extracted_code) is None:
+                if proposal.hunks:
+                    proposal.hunks[0].new = extracted_code
+                else:
+                    proposal.hunks = [
+                        PatchHunk(
+                            file=sig.file_path,
+                            old=ctx.function_source or "",
+                            new=extracted_code,
+                            rationale=f"Live LLM synthesized fix for {sig.function_name}",
+                        )
+                    ]
+                proposal.summary = f"[Live LLM: extracted code] Generated fix for {sig.function_name or sig.file_path}"
+                proposal.source = "live_llm"
+                proposal.confidence = 0.92
+            else:
+                proposal.summary = f"[Live LLM] Generated fix for {sig.function_name or sig.file_path}"
+                proposal.source = "live_llm"
+                proposal.confidence = 0.88
             return proposal
         except Exception as exc:
             raise RuntimeError(f"Live LLM invocation failed: {exc}") from exc
