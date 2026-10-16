@@ -78,3 +78,5 @@ logs/
 # Local demo scratch reports & review bundle
 docs/_last_demo_report.md
 repo_review_bundle.md
+*.zip
+
