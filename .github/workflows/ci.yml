@@ -35,3 +35,7 @@ jobs:
       - name: Execute End-to-End Self-Healing Demo
         run: |
           python -m jiuwen_codeheal.cli --demo
+
+      - name: Execute Multi-Case Benchmark Suite
+        run: |
+          python -m jiuwen_codeheal.cli --benchmark

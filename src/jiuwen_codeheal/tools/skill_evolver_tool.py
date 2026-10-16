@@ -347,12 +347,16 @@ def render_report(traj: HealingTrajectory) -> str:
             lines.append(f"- 仍失败: {', '.join(v.still_failing[:5])}")
         lines.append(f"- 沙箱: `{v.sandbox_path}`\n")
 
-    if traj.learned_pattern:
-        lp = traj.learned_pattern
+    patterns_to_show = traj.learned_patterns or ([traj.learned_pattern] if traj.learned_pattern else [])
+    if patterns_to_show:
         lines.append("## 5. Skill 自演进")
-        lines.append(f"- 提炼模式: `{lp.fingerprint}` -> `{lp.strategy.value}`")
-        lines.append(f"- 出现 {lp.occurrences} 次 · 成功 {lp.success_count} 次 · 可信={is_trusted(lp)}")
-        lines.append(f"- 已沉淀到 `skills/ci_healing_memory.md` 与 `skills/learned_patterns.json`\n")
+        for lp in patterns_to_show:
+            trusted_str = "可信=True" if is_trusted(lp) else "可信=False"
+            lines.append(f"- 提炼模式: `{lp.fingerprint}` -> `{lp.strategy.value}`")
+            lines.append(f"  - 出现 {lp.occurrences} 次 · 成功 {lp.success_count} 次 · {trusted_str}")
+            if lp.root_cause:
+                lines.append(f"  - 根因: {lp.root_cause}")
+        lines.append("- 已沉淀到 `skills/ci_healing_memory.md` 与 `skills/learned_patterns.json`\n")
 
     lines.append("## 6. 可观测性 Trace")
     for step in traj.trace:

@@ -89,13 +89,47 @@ python -m jiuwen_codeheal.cli --demo
 codeheal demo
 ```
 
-### 3. 运行全量单元与端到端测试 (34 项全量绿灯)
+### 3. 运行全量单元与端到端测试 (44 项全量绿灯)
 ```bash
 pytest -v tests
 ```
-全量包含 6 个测试模块共 34 项用例（涵盖 AST 精准切片、日志状态机、沙箱白名单与语法预检、Skill 独立经验蒸馏、经验召回提权、双模动态优雅降级、多工作流动态路由调度及端到端自愈），100% 稳定通过。
+全量包含 7 个测试模块共 44 项用例（涵盖 AST 精准切片、日志状态机、沙箱白名单与语法预检、Skill 独立经验蒸馏、经验召回提权、双模动态优雅降级、多工作流动态路由调度、6 大典型场景基准评测及端到端交互看板验证），100% 稳定通过。
 
-### 4. 多工作流动态调度 (Multi-Workflow Dynamic Routing)
+### 4. 运行 6 大典型场景量化基准评测 (Benchmark Suite)
+系统内置 6 个涵盖工业界真实 CI 故障的基准测试用例，可自动评估自愈率、回归率、MTTR 及 AST 压缩效率：
+```bash
+# 运行评测并输出汇总表格，自动生成 docs/03_Benchmark量化评测报告.md
+python -m jiuwen_codeheal.cli --benchmark
+# 或使用命令别名
+codeheal benchmark
+```
+
+| 用例 ID | 场景描述 | 故障类型 | 修复耗时 (MTTR) | 迭代轮数 | AST 压缩率 | 自愈状态 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `case_01` | 序列索引单步越界 (Off-by-one) | `IndexError` | 1,080 ms | 1 | 79.4% | [PASS] HEALED |
+| `case_02` | 空序列聚合除零异常 (Zero Division) | `ZeroDivisionError` | 1,020 ms | 1 | 78.5% | [PASS] HEALED |
+| `case_03` | 字典缺键崩溃 (Missing Key) | `KeyError` | 1,030 ms | 1 | 76.8% | [PASS] HEALED |
+| `case_04` | 空指针/空对象属性解引用 (NoneType Access) | `AttributeError` | 1,060 ms | 1 | 77.1% | [PASS] HEALED |
+| `case_05` | 字符串与数值直接拼接异常 (Type Mismatch) | `TypeError` | 1,040 ms | 1 | 77.0% | [PASS] HEALED |
+| `case_06` | 多缺陷级联递进自纠错 (Multi-Bug Cascade) | `IndexError` + `ZeroDiv` | 2,630 ms | 2 | 74.5% | [PASS] HEALED |
+
+> **核心评测指标**：自愈成功率 **100%** (6/6) · 次生缺陷回归率 **0.0%** (0/6) · 平均 MTTR **1,310 ms** · 平均 AST 压缩率 **77.2%**。详见 [docs/03_Benchmark量化评测报告.md](docs/03_Benchmark量化评测报告.md)。
+
+### 5. 交互式可视化看板 (Observability Dashboard)
+支持生成基于现代暗黑风格的前端可视化可观测性看板：
+```bash
+# 生成并自动启动本地 HTTP 服务预览
+python -m jiuwen_codeheal.cli --dashboard --serve
+# 或仅导出单文件 HTML 交付件
+codeheal dashboard --no-browser
+```
+看板四大功能面板：
+1. **openJiuwen 拓扑 DAG 视图**：交互式节点高亮与流转阶段展示；
+2. **Trace 毫秒级时序时间线**：展示每轮迭代耗时、智能体 Teammate 分工与状态；
+3. **补丁差异对比器 (Diff Viewer)**：统一 Git Diff 增删行语法色彩高亮；
+4. **Skill 进化知识库与 Benchmark 大屏**：实时量化评测指标、蒸馏模式雷达及置信度。
+
+### 6. 多工作流动态调度 (Multi-Workflow Dynamic Routing)
 - **快速诊断流（InspectFlow）**：`Start -> triage -> inspect -> End`，毫秒级分析报错堆栈与 AST 依赖切片；
 - **四阶段全自愈流（SwarmFlow）**：`Start -> triage -> inspect -> verify -> evolve -> End`，驱动隔离沙箱验证与经验自演进。
 
@@ -177,10 +211,12 @@ pytest -v tests
 jiuwen-codeheal-swarm/
 ├── README.md                          # 官方门面文档 (本文件)
 ├── pyproject.toml                     # 项目构建与依赖声明
-├── .github/workflows/ci.yml           # GitHub Actions 自动化 CI 管道
+├── .github/workflows/ci.yml           # GitHub Actions 自动化 CI 管道 (含全量单测、Demo 与 Benchmark)
 ├── docs/
-│   ├── 01_初赛创意申报书.md             # 【核心评审件】涵盖大赛五要素、痛点、架构图与商业价值 (4000+ 字)
-│   └── 02_系统架构与实现文档.md         # openJiuwen 图流转、多角色状态机与安全沙箱深度技术解构
+│   ├── 01_初赛创意申报书.md             # 【核心评审件】大赛五要素、痛点、架构图与商业价值 (4000+ 字)
+│   ├── 02_系统架构与实现文档.md         # openJiuwen 图流转、多角色状态机与安全沙箱深度技术解构
+│   ├── 03_Benchmark量化评测报告.md      # 6 大典型工业场景量化基准评测报告 (100% 自愈 / 0% 回归)
+│   └── dashboard.html                 # 交互式全链路可观测看板 (DAG 拓扑、Trace 甘特图、Diff 对比)
 ├── skills/
 │   ├── SKILL.md                       # JiuwenSwarm 规范的 CI 自愈 Skill 定义
 │   ├── learned_patterns.json          # 结构化沉淀的错误指纹与策略知识库
@@ -191,10 +227,12 @@ jiuwen-codeheal-swarm/
 │   ├── config.py                      # 双模配置管理 (Live LLM / Replay Mock)
 │   ├── schemas.py                     # 全链路 Pydantic 状态契约模型
 │   ├── swarm_leader.py                # SwarmLeader 意图识别与任务拆解控制器
-│   ├── cli.py                         # 终端丰富交互与一键 Demo 入口
-│   ├── tools/                         # 真实四大领域工具组件
-│   └── workflows/                     # openJiuwen Workflow 图计算编排
-└── tests/                             # 19 项单元与端到端回归测试 (100% 通过)
+│   ├── cli.py                         # 终端丰富交互、一键 Demo、Benchmark 及 Dashboard 入口
+│   ├── benchmark.py                   # 6 大场景自愈评测引擎与 Markdown 报告生成器
+│   ├── dashboard.py                   # 交互式暗黑主题 HTML 可观测性看板生成器
+│   ├── tools/                         # 真实四大领域工具组件 (AST/日志/沙箱/经验进化)
+│   └── workflows/                     # openJiuwen Workflow 计算图编排 (SwarmFlow / InspectFlow)
+└── tests/                             # 44 项单元与端到端回归测试 (100% 稳定通过)
 ```
 
 ---
@@ -203,6 +241,8 @@ jiuwen-codeheal-swarm/
 
 - 欲查阅大赛要求的初赛五要素、深度痛点对比与时序/数据流图，请阅读 **[docs/01_初赛创意申报书.md](docs/01_初赛创意申报书.md)**。
 - 欲深入了解 openJiuwen 图节点编排、安全沙箱白名单与 Skill 自进化机制，请阅读 **[docs/02_系统架构与实现文档.md](docs/02_系统架构与实现文档.md)**。
+- 欲查看 6 大工业场景量化实测数据、MTTR、回归率与 AST 上下文压缩对比，请阅读 **[docs/03_Benchmark量化评测报告.md](docs/03_Benchmark量化评测报告.md)**。
+- 欲体验端到端可视化暗黑主题大屏，请浏览器直接打开 **[docs/dashboard.html](docs/dashboard.html)**。
 
 ---
 

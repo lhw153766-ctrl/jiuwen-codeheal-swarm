@@ -243,10 +243,11 @@ class SwarmLeader:
             from openjiuwen.core.foundation.llm import ModelClientConfig, ProviderType
             from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 
+            provider_val = getattr(ProviderType, "OpenAI", getattr(ProviderType, "OPENAI", "OpenAI"))
             client_cfg = ModelClientConfig(
-                provider=ProviderType.OPENAI,
+                client_provider=provider_val,
                 api_key=self.config.client.api_key,
-                base_url=self.config.client.api_base,
+                api_base=self.config.client.api_base,
             )
             comp_cfg = LLMCompConfig(
                 model_client_config=client_cfg,
