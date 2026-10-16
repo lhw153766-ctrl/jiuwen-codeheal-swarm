@@ -257,11 +257,11 @@
                 <span>Jiuwen-CodeHeal Swarm</span>
                 <span class="badge" style="background: #3fb95022; color: #3fb950; border: 1px solid #3fb950;">HEALED (CI 变绿)</span>
             </h1>
-            <p>基于 openJiuwen & JiuwenSwarm 多智能体协同的仓库级 CI 故障自愈系统 · 模式: <strong>replay</strong> · Run: <code>run-20261016-183915</code></p>
+            <p>基于 openJiuwen & JiuwenSwarm 多智能体协同的仓库级 CI 故障自愈系统 · 模式: <strong>replay</strong> · Run: <code>run-20261016-185903</code></p>
         </div>
         <div class="header-meta">
             <span class="badge badge-info">迭代 2 轮</span>
-            <span class="badge badge-info">耗时 4.56s</span>
+            <span class="badge badge-info">耗时 1.13s</span>
         </div>
     </div>
 
@@ -368,7 +368,7 @@
                 <div class="timeline-header">
                     <span class="timeline-title">根因定位与 AST 检索</span>
                     <span class="timeline-phase">2-inspect (iter 1)</span>
-                    <span class="timeline-duration">2.9ms</span>
+                    <span class="timeline-duration">1.6ms</span>
                     <span class="badge badge-ok">OK</span>
                     <span class="tag-mem">Memory Hit: 0.95</span>
                 </div>
@@ -383,7 +383,7 @@
                 <div class="timeline-header">
                     <span class="timeline-title">沙箱补丁回归验证</span>
                     <span class="timeline-phase">3-verify (iter 1)</span>
-                    <span class="timeline-duration">582.9ms</span>
+                    <span class="timeline-duration">588.3ms</span>
                     <span class="badge badge-fail">FAIL</span>
                     
                 </div>
@@ -413,7 +413,7 @@
                 <div class="timeline-header">
                     <span class="timeline-title">根因定位与 AST 检索</span>
                     <span class="timeline-phase">2-inspect (iter 2)</span>
-                    <span class="timeline-duration">1.0ms</span>
+                    <span class="timeline-duration">2.0ms</span>
                     <span class="badge badge-ok">OK</span>
                     <span class="tag-mem">Memory Hit: 0.95</span>
                 </div>
@@ -428,7 +428,7 @@
                 <div class="timeline-header">
                     <span class="timeline-title">沙箱补丁回归验证</span>
                     <span class="timeline-phase">3-verify (iter 2)</span>
-                    <span class="timeline-duration">531.7ms</span>
+                    <span class="timeline-duration">529.7ms</span>
                     <span class="badge badge-ok">OK</span>
                     
                 </div>
@@ -443,7 +443,7 @@
                 <div class="timeline-header">
                     <span class="timeline-title">Skill 自演进与复盘</span>
                     <span class="timeline-phase">4-evolve</span>
-                    <span class="timeline-duration">1.4ms</span>
+                    <span class="timeline-duration">1.0ms</span>
                     <span class="badge badge-ok">OK</span>
                     
                 </div>
@@ -506,7 +506,7 @@
             </div>
             <div class="pattern-body">
                 <p><strong>根因模式:</strong> index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range</p>
-                <p><strong>统计数据:</strong> 发生 8 次 · 修复成功 8 次 (成功率 100.0%)</p>
+                <p><strong>统计数据:</strong> 发生 9 次 · 修复成功 9 次 (成功率 100.0%)</p>
                 <div class="code-snippet"><code>def find_max(seq: Sequence[int]) -&gt; int:
     &quot;&quot;&quot;返回序列中的最大值。
 
@@ -531,7 +531,7 @@
             </div>
             <div class="pattern-body">
                 <p><strong>根因模式:</strong> value_error in `buggy_repo_demo/calc.py` function `average` — division by zero</p>
-                <p><strong>统计数据:</strong> 发生 8 次 · 修复成功 8 次 (成功率 100.0%)</p>
+                <p><strong>统计数据:</strong> 发生 9 次 · 修复成功 9 次 (成功率 100.0%)</p>
                 <div class="code-snippet"><code>def average(values: List[float]) -&gt; float:
     &quot;&quot;&quot;返回数值列表的平均值。
 
