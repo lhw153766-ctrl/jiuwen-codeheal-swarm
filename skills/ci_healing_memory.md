@@ -574,3 +574,91 @@ def average(values: List[float]) -> float:
 ```
 - **Occurrences**: 13 (success 13)
 - **Run**: run-20261016-155348 · 5.00s · mode=replay
+
+## [2026-10-16 15:55:26] index_error @ `buggy_repo_demo/calc.py` — ✅ HEALED
+
+- **Fingerprint**: `4747dcb7db75d17f`
+- **Root cause**: index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range
+- **Strategy**: `boundary_guard`
+- **Fix template**:
+
+```python
+def find_max(seq: Sequence[int]) -> int:
+    """返回序列中的最大值。
+
+    BUG: 循环访问 ``seq[i]`` 而 ``i`` 取遍 ``range(len(seq))``，当
+    ``i == len(seq) - 1`` 时 ``seq[i]`` 越界，触发 ``IndexError``。
+    正确写法应访问 ``seq[i]``，或用内置 ``max(seq)``。
+    """
+    best = seq[0]
+    for i in range(len(seq)):  # BUG 1: seq[i] 在末轮越界
+        if seq[i] > best:
+            best = seq[i]
+    return best
+```
+- **Occurrences**: 14 (success 14)
+- **Run**: run-20261016-155526 · 1.25s · mode=replay
+
+## [2026-10-16 15:55:26] value_error @ `buggy_repo_demo/calc.py` — ✅ HEALED
+
+- **Fingerprint**: `fc077a19126271d9`
+- **Root cause**: value_error in `buggy_repo_demo/calc.py` function `average` — division by zero
+- **Strategy**: `boundary_guard`
+- **Fix template**:
+
+```python
+def average(values: List[float]) -> float:
+    """返回数值列表的平均值。
+
+    BUG: 空列表未守卫，触发 ZeroDivisionError。
+    """
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+```
+- **Occurrences**: 14 (success 14)
+- **Run**: run-20261016-155526 · 1.25s · mode=replay
+
+## [2026-10-16 15:55:30] index_error @ `buggy_repo_demo/calc.py` — ✅ HEALED
+
+- **Fingerprint**: `4747dcb7db75d17f`
+- **Root cause**: index_error in `buggy_repo_demo/calc.py` function `find_max` — list index out of range
+- **Strategy**: `boundary_guard`
+- **Fix template**:
+
+```python
+def find_max(seq: Sequence[int]) -> int:
+    """返回序列中的最大值。
+
+    BUG: 循环访问 ``seq[i]`` 而 ``i`` 取遍 ``range(len(seq))``，当
+    ``i == len(seq) - 1`` 时 ``seq[i]`` 越界，触发 ``IndexError``。
+    正确写法应访问 ``seq[i]``，或用内置 ``max(seq)``。
+    """
+    best = seq[0]
+    for i in range(len(seq)):  # BUG 1: seq[i] 在末轮越界
+        if seq[i] > best:
+            best = seq[i]
+    return best
+```
+- **Occurrences**: 15 (success 15)
+- **Run**: run-20261016-155530 · 5.33s · mode=replay
+
+## [2026-10-16 15:55:30] value_error @ `buggy_repo_demo/calc.py` — ✅ HEALED
+
+- **Fingerprint**: `fc077a19126271d9`
+- **Root cause**: value_error in `buggy_repo_demo/calc.py` function `average` — division by zero
+- **Strategy**: `boundary_guard`
+- **Fix template**:
+
+```python
+def average(values: List[float]) -> float:
+    """返回数值列表的平均值。
+
+    BUG: 空列表未守卫，触发 ZeroDivisionError。
+    """
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+```
+- **Occurrences**: 15 (success 15)
+- **Run**: run-20261016-155530 · 5.33s · mode=replay
